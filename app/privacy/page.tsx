@@ -1,0 +1,1 @@
+export const metadata={title:"Privacy Policy"}; export default function Page(){return <main className="legal"><h1>Privacy Policy</h1><p>FamilyMapBuilder is designed to minimize collection of personal information. Avoid entering sensitive information you do not wish to store or share.</p></main>}
