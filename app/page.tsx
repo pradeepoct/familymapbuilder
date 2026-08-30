@@ -1,23 +1,32 @@
 "use client";
-import {useMemo,useState} from "react";
-import {Plus,Users,Search,Download,Heart,GitBranch,Trash2} from "lucide-react";
-type Person={id:number;name:string;relationship:string};
+import {useEffect,useMemo,useState} from "react";
+import {Plus,Users,Search,Download,Heart,GitBranch,Trash2,ZoomIn,ZoomOut,RotateCcw,UserRound,Save} from "lucide-react";
+type Relationship="Self"|"Parent"|"Sibling"|"Partner"|"Child";
+type Person={id:number;name:string;relationship:Relationship;parentId?:number};
+const initial:Person[]=[{id:1,name:"You",relationship:"Self"}];
 export default function Home(){
- const [people,setPeople]=useState<Person[]>([{id:1,name:"You",relationship:"Start person"}]);
- const [name,setName]=useState(""); const [query,setQuery]=useState("");
- const add=(relationship:string)=>{const n=name.trim()||"New family member";setPeople(p=>[...p,{id:Date.now(),name:n,relationship}]);setName("")};
+ const [people,setPeople]=useState<Person[]>(initial); const [selected,setSelected]=useState(1);
+ const [name,setName]=useState(""); const [query,setQuery]=useState(""); const [zoom,setZoom]=useState(1);
+ useEffect(()=>{const saved=localStorage.getItem("fmb-tree-v1");if(saved){try{setPeople(JSON.parse(saved))}catch{}}},[]);
+ useEffect(()=>{localStorage.setItem("fmb-tree-v1",JSON.stringify(people))},[people]);
+ const add=(relationship:Relationship)=>{const n=name.trim()||"New family member";const id=Date.now();setPeople(p=>[...p,{id,name:n,relationship,parentId:selected}]);setSelected(id);setName("")};
+ const remove=(id:number)=>{if(id===1)return;setPeople(p=>p.filter(x=>x.id!==id).map(x=>x.parentId===id?{...x,parentId:1}:x));setSelected(1)};
  const visible=useMemo(()=>people.filter(p=>p.name.toLowerCase().includes(query.toLowerCase())),[people,query]);
+ const levels:Record<Relationship,number>={Parent:0,Self:1,Sibling:1,Partner:1,Child:2};
  return <main>
  <nav><a className="brand" href="/">FamilyMapBuilder</a><div><a href="#how">How it works</a><a href="#features">Features</a><a href="#builder" className="navcta">Start building</a></div></nav>
- <section className="hero"><div><p className="eyebrow">FREE ONLINE FAMILY TREE BUILDER</p><h1>Build your family tree without complicated software.</h1><p>Create a visual family map in minutes. Start with one person, then add parents, children, siblings and partners with simple actions.</p><a className="primary" href="#builder">Start your family tree <GitBranch size={18}/></a><small>No credit card required for the builder.</small></div><aside><Users size={44}/><h2>Start with one person</h2><p>Your family map grows naturally as you add relationships.</p></aside></section>
- <section id="builder" className="builder"><header><div><p className="eyebrow">INTERACTIVE FAMILY MAP</p><h2>Build your tree</h2></div><button disabled title="Export is part of the next milestone"><Download size={18}/> Export soon</button></header>
- <div className="controls"><input value={name} onChange={e=>setName(e.target.value)} placeholder="Family member name"/><button className="primary" onClick={()=>add("Family member")}><Plus size={18}/> Add person</button></div>
+ <section className="hero"><div><p className="eyebrow">FREE ONLINE FAMILY TREE BUILDER</p><h1>Build your family tree without complicated software.</h1><p>Create a visual family map in minutes. Start with one person, then add parents, children, siblings and partners with simple actions.</p><a className="primary" href="#builder">Start your family tree <GitBranch size={18}/></a><small>Private browser saving included. No account required to start.</small></div><aside><Users size={44}/><h2>Start with one person</h2><p>Your family map grows naturally as you add relationships.</p></aside></section>
+ <section id="builder" className="builder"><header><div><p className="eyebrow">INTERACTIVE FAMILY MAP</p><h2>Build your tree</h2></div><div className="canvas-actions"><button onClick={()=>setZoom(z=>Math.min(1.4,z+.1))}><ZoomIn size={17}/></button><button onClick={()=>setZoom(z=>Math.max(.7,z-.1))}><ZoomOut size={17}/></button><button onClick={()=>{setPeople(initial);setSelected(1);setZoom(1)}} title="Reset tree"><RotateCcw size={17}/></button><button disabled><Download size={17}/> Export soon</button></div></header>
+ <div className="selected"><UserRound size={18}/><span>Adding relative to: <strong>{people.find(p=>p.id===selected)?.name||"You"}</strong></span><Save size={16}/><small>Saved automatically on this device</small></div>
+ <div className="controls"><input value={name} onChange={e=>setName(e.target.value)} placeholder="Family member name"/><button className="primary" onClick={()=>add("Child")}><Plus size={18}/> Add person</button></div>
  <div className="relationships"><button onClick={()=>add("Parent")}>Add parent</button><button onClick={()=>add("Sibling")}>Add sibling</button><button onClick={()=>add("Partner")}>Add partner</button><button onClick={()=>add("Child")}>Add child</button></div>
  <div className="search"><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search family members"/></div>
- <div className="tree">{visible.map(p=><article className="person" key={p.id}><div className="avatar">{p.name[0]?.toUpperCase()}</div><strong>{p.name}</strong><span>{p.relationship}</span>{p.id!==1&&<button aria-label={"Remove "+p.name} onClick={()=>setPeople(x=>x.filter(i=>i.id!==p.id))}><Trash2 size={15}/></button>}</article>)}</div>
- <p className="tip"><Heart size={17}/> Enter a name once, then choose the relationship you want to add.</p></section>
- <section id="features" className="features"><article><Users size={26}/><h3>Easy to understand</h3><p>Relationship-based actions keep family tree creation simple.</p></article><article><Search size={26}/><h3>Quick search</h3><p>Find people quickly as larger family maps grow.</p></article><article><GitBranch size={26}/><h3>Built to expand</h3><p>The foundation supports profiles, photos, sharing and richer relationship visualization.</p></article></section>
- <section id="how" className="how"><p className="eyebrow">HOW IT WORKS</p><h2>Three simple steps</h2><ol><li><b>1</b><span><strong>Start with yourself</strong><br/>Create the first person in your family map.</span></li><li><b>2</b><span><strong>Add relatives</strong><br/>Choose parent, sibling, partner or child.</span></li><li><b>3</b><span><strong>Grow the story</strong><br/>Continue adding people and connections.</span></li></ol></section>
+ <div className="tree-viewport"><div className="tree-stage" style={{transform:`scale(${zoom})`}}>
+ {[0,1,2].map(level=><div className="generation" key={level}>{visible.filter(p=>levels[p.relationship]===level).map(p=><article className={"person "+(selected===p.id?"active":"")} key={p.id} onClick={()=>setSelected(p.id)}><div className="avatar">{p.name[0]?.toUpperCase()}</div><strong>{p.name}</strong><span>{p.relationship}</span>{p.id!==1&&<button aria-label={"Remove "+p.name} onClick={e=>{e.stopPropagation();remove(p.id)}}><Trash2 size={15}/></button>}</article>)}</div>)}
+ </div></div>
+ <p className="tip"><Heart size={17}/> Select any person first. New relatives are added in relation to that person.</p></section>
+ <section id="features" className="features"><article><Users size={26}/><h3>Easy to understand</h3><p>Relationship-based actions keep family tree creation simple.</p></article><article><Search size={26}/><h3>Quick search</h3><p>Find people quickly as larger family maps grow.</p></article><article><Save size={26}/><h3>Auto-save</h3><p>Your current tree is automatically saved locally in your browser.</p></article></section>
+ <section id="how" className="how"><p className="eyebrow">HOW IT WORKS</p><h2>Three simple steps</h2><ol><li><b>1</b><span><strong>Start with yourself</strong><br/>Create the first person in your family map.</span></li><li><b>2</b><span><strong>Add relatives</strong><br/>Select a person and choose parent, sibling, partner or child.</span></li><li><b>3</b><span><strong>Grow the story</strong><br/>Your tree is saved on your device while you continue building.</span></li></ol></section>
  <footer>© 2026 FamilyMapBuilder · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></footer>
  </main>
 }
