@@ -1,0 +1,1 @@
+export const metadata={title:"Terms of Use"}; export default function Page(){return <main className="legal"><h1>Terms of Use</h1><p>Users are responsible for information entered and should obtain appropriate permission before sharing information about living people.</p></main>}
